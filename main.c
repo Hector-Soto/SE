@@ -4,6 +4,9 @@
 // LED_GREEN = PTD5  porto D pin 5
 // LED_RED = PTE29
 
+bool x=false, y=false;
+int a, b, v=0, w=0;
+  
 void delay(void)
 {
   volatile int i;
@@ -40,49 +43,25 @@ void led_red_toggle(void)
 
 void sw1_init(){
   SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK; //0x800U, bit nº11
-  PORTC->PCR[3] |= PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(1);
-//  PORTC->PCR[3] |= PORT_PCR_PE(1);
+  PORTC->PCR[3] |= PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(1) | PORT_PCR_IRQC(10);//IRQC 10 (1010) interrupcion falling
   GPIOC->PDDR &= ~(1 << 3); //Pin entrada debe estar a 0
-}
-
-int read_sw1(){
-  return !(GPIOC->PDIR & (1<<3)) ;
 }
 
 void sw2_init(){
   SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK;
-  PORTC->PCR[12] |= PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(1);
-//  PORTC->PCR[12] |= PORT_PCR_PE(1);
+  PORTC->PCR[12] |= PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(1) | PORT_PCR_IRQC(10);
   GPIOC->PDDR &= ~(1 << 12);
 }
 
-int read_sw2(){
-  return !(GPIOC->PDIR & (1<<12)) ;
-}
-
-
-int main(void)
-{
-  bool x=false, y=false;
-  int a, b, v=0, w=0;
-  SIM->COPC = 0; 
-  sw1_init();
-  sw2_init();
-  led_green_init();
-  led_red_init();
-  led_green_toggle();
-  
-  while (1) {
-    a=read_sw1();
-    b=read_sw2();
+void PORTDIntHandler(void){ //PORTC/PORTD handler
+    a = !(PORTC->ISFR & (1<<3)); //Comprobar que botón activo la interrupción
+    b = !(PORTC->ISFR & (1<<12));
     
     if(a==1){
     	x=!x;
-    	delay();
     }
     if(b==1){
     	y=!y;
-    	delay();
     }
     
     if(x==false && y==false && ( (v==1 && w==0) || (v==0 && w==1) ) ){//00
@@ -108,6 +87,21 @@ int main(void)
     	v=1;
     	w=1;
     }
+    
+    PORTC->PCR[3] |= PORT_PCR_ISF(1);
+    PORTC->PCR[12] |= PORT_PCR_ISF(1);
+}
+
+int main(void)
+{
+  SIM->COPC = 0; 
+  sw1_init();
+  sw2_init();
+  led_green_init();
+  led_red_init();
+  led_green_toggle();
+  NVIC_EnableIRQ(PORTC_PORTD_IRQn);//Habilitar IRQ en portC
+  while (1) {   
   }
 
   return 0;
