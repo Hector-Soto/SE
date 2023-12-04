@@ -126,7 +126,7 @@ void (* const g_pfnVectors[])(void) =
     DACIntHandler,                          // DAC handler
     TSIIntHandler,                          // TSI handler
     MCGIntHandler,                          // MCG handler
-    LPTMRIntHandler,                        // PIT handler
+    LPTMRIntHandler,                        // LPTMR handler
     0,                                      // Reserved
     PORTAIntHandler,                        // PORTA handler
     PORTDIntHandler,                        // PORTC/PORTD handler
