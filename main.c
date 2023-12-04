@@ -1,54 +1,73 @@
+#include "FreeRTOS.h"
 #include "MKL46Z4.h"
+#include "lcd.h"
+#include "queue.h"
+#include "task.h"
+#include "string.h"
 
-// LED (RG)
-// LED_GREEN = PTD5
-// LED_RED = PTE29
+char cadena[] = "Supercalifragilistiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaacocuespialidoso";
+QueueHandle_t xQueue;
+int pos; 
+int tamCadena;
+int tamCola = 7; 
+char envio; 
+char recibo; 
+int cantidad;
 
-void delay(void)
-{
-  volatile int i;
-
-  for (i = 0; i < 1000000; i++);
+void irclk_ini(){
+  MCG->C1 = MCG_C1_IRCLKEN(1) | MCG_C1_IREFSTEN(1);
+  MCG->C2 = MCG_C2_IRCS(0); //0 32KHZ internal reference clock; 1= 4MHz irc
 }
 
-// LED_GREEN = PTD5
-void led_green_init()
-{
-  SIM->COPC = 0;
-  SIM->SCGC5 |= SIM_SCGC5_PORTD_MASK;
-  PORTD->PCR[5] = PORT_PCR_MUX(1);
-  GPIOD->PDDR |= (1 << 5);
-  GPIOD->PSOR = (1 << 5);
+void productor(void *pvParameters){
+    int start = 0;
+    for (;;) {
+    	if(cantidad != tamCola){
+    		if(pos<tamCadena){
+    			envio = cadena[pos];
+    			pos++;
+		        const void * envio2 = (void *)&envio;
+			xQueueSendToBack(xQueue, envio2, portMAX_DELAY);
+		    	
+			cantidad = uxQueueMessagesWaiting(xQueue);
+			lcd_display_dec(cantidad);
+    		}
+    	}
+    	vTaskDelay(100/portTICK_RATE_MS);
+    }
 }
 
-void led_green_toggle()
-{
-  GPIOD->PTOR = (1 << 5);
+void consumidor(void *pvParameters){
+    for (;;) {
+    	if(xQueue != NULL){
+        	xQueueReceive(xQueue, &recibo, portMAX_DELAY);
+    		cantidad = uxQueueMessagesWaiting(xQueue);
+		lcd_display_dec(cantidad);
+    	}
+    	vTaskDelay(150/portTICK_RATE_MS);
+    }
 }
 
-// LED_RED = PTE29
-void led_red_init()
-{
-  SIM->COPC = 0;
-  SIM->SCGC5 |= SIM_SCGC5_PORTE_MASK;
-  PORTE->PCR[29] = PORT_PCR_MUX(1);
-  GPIOE->PDDR |= (1 << 29);
-  GPIOE->PSOR = (1 << 29);
-}
+int main(void){
+  pos = 0;
+  tamCadena = strlen(cadena);
+  
+  irclk_ini();
+  lcd_ini();
 
-void led_red_toggle(void)
-{
-  GPIOE->PTOR = (1 << 29);
-}
+  xQueue = xQueueCreate(tamCola, sizeof( char ) );
+  
+  
+  xTaskCreate(productor, (signed char *)"productor", 
+		configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
-int main(void)
-{
-  led_green_init();
-
-  while (1) {
-    led_green_toggle();
-    delay();
-  }
+  xTaskCreate(consumidor, (signed char *)"consumidor", 
+		configMINIMAL_STACK_SIZE, NULL, 0, NULL);
+		
+  /* start the scheduler */
+  vTaskStartScheduler();
+  
+  for (;;);
 
   return 0;
 }
