@@ -37,6 +37,9 @@
 #include "board.h"
 
 #include "pin_mux.h"
+#include <stdbool.h>
+bool derb=false, izqb=false;
+int valor=0, izq, der;
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -52,6 +55,87 @@
 /*!
  * @brief Main function
  */
+void led_green_init()
+{
+  SIM->SCGC5 |= SIM_SCGC5_PORTD_MASK;
+  PORTD->PCR[5] = PORT_PCR_MUX(1); 
+  GPIOD->PDDR |= (1 << 5); 
+  GPIOD->PSOR = (1 << 5);  
+}
+
+void led_green_toggle()
+{
+  GPIOD->PTOR = (1 << 5);
+}
+
+void led_red_init()
+{
+  SIM->SCGC5 |= SIM_SCGC5_PORTE_MASK;
+  PORTE->PCR[29] = PORT_PCR_MUX(1);
+  GPIOE->PDDR |= (1 << 29);
+  GPIOE->PSOR = (1 << 29);
+}
+
+void led_red_toggle(void)
+{
+  GPIOE->PTOR = (1 << 29);
+}
+
+void sw1_init(){
+  SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK; //0x800U, bit nº11
+  PORTC->PCR[3] |= PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(1) | PORT_PCR_IRQC(10);//IRQC 10 (1010) interrupcion falling
+  GPIOC->PDDR &= ~(1 << 3); //Pin entrada debe estar a 0
+}
+
+void sw2_init(){
+  SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK;
+  PORTC->PCR[12] |= PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(1) | PORT_PCR_IRQC(10);
+  GPIOC->PDDR &= ~(1 << 12);
+}
+
+void PORTD_Int_Handler(void){ //PORTC/PORTD handler
+    der = !(PORTC->ISFR & (1<<12)); //Comprobar que botón activo la interrupción
+    izq = !(PORTC->ISFR & (1<<3));
+    if(izq==1){
+    	valor = valor+1;
+    	izqb = true;
+    }else if(der==1){
+    	valor = valor-2;
+    	derb = true;
+    }
+    
+  if(izqb){
+	if(valor%4==0){ //Ambos apagados
+  		led_green_toggle(); 	
+  		led_red_toggle();	
+  	}else if(valor%4==1){ //Enciende rojo y apaga verde
+  		led_red_toggle();
+  	}else if(valor%4==2){ //Enciende verde apaga rojo
+  		led_green_toggle();
+  		led_red_toggle();
+  	}else if(valor%4==3){ //Ambos encendidos
+  		led_red_toggle();
+  	}  
+  }else if(derb){
+  	led_green_toggle();
+  	led_red_toggle();
+  	if(valor%4==0){ //Ambos apagados
+  		valor=3;	
+  	}else if(valor%4==1){ //Enciende rojo y apaga verde
+  		valor=2;
+  	}else if(valor%4==2){ //Enciende verde apaga rojo
+  		valor=1;
+  	}else if(valor%4==3){ //Ambos encendidos
+  		valor=0;
+  	}  
+  }
+  
+
+  derb = false;
+  izqb = false;
+  PORTC->PCR[3] |= PORT_PCR_ISF(1);
+  PORTC->PCR[12] |= PORT_PCR_ISF(1);
+}
 int main(void)
 {
   char ch;
@@ -60,6 +144,13 @@ int main(void)
   BOARD_InitPins();
   BOARD_BootClockRUN();
   BOARD_InitDebugConsole();
+  
+  SIM->COPC = 0; 
+  sw1_init();
+  sw2_init();
+  led_green_init();
+  led_red_init();
+  NVIC_EnableIRQ(PORTC_PORTD_IRQn);
 
   PRINTF("\r\nReinicio!\r\n");
 
