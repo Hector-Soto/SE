@@ -1,0 +1,40 @@
+* Enunciado do exame de 1a oportunidade do curso 23/24 de Sistemas Empotrados: LER CON ATENCIÓN
+
+O exame consistirá no desenvolvemento dunha simple *CLI* (/Command Line Interface/, isto é, unha liña de comandos) para interaccionar coa vosa placa FRDM-KL46Z mediante, neste caso, a interface de depuración: comunicación serie coa SDA da placa a través do porto USB empregando o driver UART da SDK.
+
+Partiredes deste repositorio git, que debedes clonar: [[https://gitlab.citic.udc.es/emilio.padron/se2324_1op]]
+
+Cando compiledes ese código (o Makefile para facelo é cousa vosa tamén) disporedes da comunicación serie a través de USB mediante a interface de depuración xa comentada (podedes ver as funcións e macros que ofrece esta interface en /utilities/fsl_debug_console.h/).
+
+Podedes usar [[https://en.wikipedia.org/wiki/Minicom][minicom]] ou calquera outro software de comunicación serie para probar o voso código. Tedes un exemplo do seu uso xunto a esta tarea do exame, ademais dun binario funcional que manda a cadea 'hello world' se queredes probar a comunicación serie coa vosa placa.
+
+Para desenvolver este proxecto podedes engadir todos os arquivos a maiores que precisedes, ademais de modificar todo o que sexa necesario os arquivos main.c e startup.c. O resto de arquivos non vos está permitido cambialos, nin movelos, nin sobreescribilos con outros.
+
+*ENTREGABLE*: o mesmo repositorio git do que partides, cos vosos commits por riba do previamente existente (que non vos está permitido modificar). Podedes subir o repositorio a algún sitio (gitlab/github/etc.) e pasarme a ligazón ou pasarme un tarball/zip con todo (pero debe estar o repositorio, isto é, o directorio .git). É obrigatorio que fagades varios commits, non me vale un commit «gordo» con todo o voso traballo. Ide facendo commits segundo ides progresando, aínda que non haxa un estado funcional do código. Non incluades arquivos binarios nos commits.
+
+  + *1 punto do exame* Makefile que permita xerar un binario funcional, coa comunicación serie requerida, e «flashealo» na placa cun simple «make flash».
+
+
+  + *3 puntos do exame* Uso dos botóns, mediante interrupcións, para implementar un autómata que acende/apaga os dous LEDs da placa (a placa iníciase cos dous LEDs apagados) deste xeito:
+    - botón esquerdo: cada vez que se preme conmuta entre os seguintes estados (sempre nesta orde): LED vermello acendido e verde apagado, LED vermello apagado e verde acendido, os dous LEDs acendidos, os dous LEDs apagados.
+    - botón dereito: invirte o estado actual dos LEDs. Vais, que se un está apagado e o outro acendido, invírtense. Se os dous están apagado pasan a estar acendidos; e se están acendidos ambos, apáganse.
+
+
+  + *3 puntos do exame* Interface CLI básica (é dicir, eco por pantalla co carácter asociado a cada tecla que se preme no teclado, e salto de liña co return para completar o comando), mostrando como /prompt/ visual o _símbolo '$' seguido dun espazo_.
+
+    A interface permite introducir, tras o prompt, estes comandos: (case sensitive)
+    - led1: este comando invirte o estado actual do LED vermello (consideramos que este é o LED da esquerda): acéndeo, se está apagado, apágao se estaba acendido.
+    - led2: invirte o estado actual do LED verde.
+    - off: apaga os dous leds.
+    - toggle: vén facendo o mesmo que o botón dereito: se un led está acendido, apágao e acende o outro. Se ningún está acendido, acende os dous. Se xa estaban acendidos, apágaos.
+
+    No caso de introducir calquera outra cousa, o prompt devolveranos un «Comando inválido».
+    
+
+  + *3 puntos do exame* A mosa CLI vai agora admitir que introduzamos o comando 'blink' seguido dun espazo e un número enteiro entre 1 e 10. Este número mostrarase no LCD da placa, ademais de na terminal como resposta do prompt.
+
+    Este comando activa o pestanexo dos LEDs (o que estea activo en cada momento, de acordo co estado do autómata en cada momento), sendo o número o período do pestanexo en segundos: un 5, por exemplo, significa un ciclo de cinco segundos acendido, cinco segundos apagados, etc. O autómata segue funcionando como ata agora. Os LEDs poden estar apagador se están no estado 'off',  pero cando un ou os dous están acendidos estarían pestanexando de acordo ao valor do último 'blink' rexistrado.
+
+    Para levar a conta do tempo podedes empregar calquera das opcións de temporizador presentes na placa.
+
+    Un comando 'unblink', ou facer 'blink 0', permite deshabilitar o pestanexo.

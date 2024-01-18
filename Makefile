@@ -1,11 +1,9 @@
-#TOOLCHAIN=~/toolchain/gcc-arm-none-eabi-4_9-2014q4/bin
-#PREFIX=$(TOOLCHAIN)/arm-none-eabi-
 PREFIX=arm-none-eabi-
 
-ARCHFLAGS=-mthumb -mcpu=cortex-m0plus
+ARCHFLAGS=-mthumb -mcpu=cortex-m0plus -DCPU_MKL46Z256VLL4
 COMMONFLAGS=-g3 -Og -Wall -Werror $(ARCHFLAGS)
 
-CFLAGS=-I./includes $(COMMONFLAGS)
+CFLAGS=-I./include -I./drivers -I./utilities -I./BOARD $(COMMONFLAGS)
 LDFLAGS=$(COMMONFLAGS) --specs=nano.specs -Wl,--gc-sections,-Map,$(TARGET).map,-Tlink.ld
 LDLIBS=
 
@@ -17,7 +15,7 @@ RM=rm -f
 
 TARGET=main
 
-SRC=$(wildcard *.c)
+SRC=$(wildcard *.c include/*.c drivers/*.c utilities/*.c BOARD/*.c)
 OBJ=$(patsubst %.c, %.o, $(SRC))
 
 all: build size
