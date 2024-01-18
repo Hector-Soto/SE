@@ -38,8 +38,10 @@
 
 #include "pin_mux.h"
 #include <stdbool.h>
+#include <string.h>
 bool derb=false, izqb=false;
 int valor=0, izq, der;
+int numBlinks = 5;
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -82,15 +84,29 @@ void led_red_toggle(void)
 }
 
 void sw1_init(){
-  SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK; //0x800U, bit nº11
+  SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK;
   PORTC->PCR[3] |= PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(1) | PORT_PCR_IRQC(10);//IRQC 10 (1010) interrupcion falling
-  GPIOC->PDDR &= ~(1 << 3); //Pin entrada debe estar a 0
+  GPIOC->PDDR &= ~(1 << 3);
 }
 
 void sw2_init(){
   SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK;
   PORTC->PCR[12] |= PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(1) | PORT_PCR_IRQC(10);
   GPIOC->PDDR &= ~(1 << 12);
+}
+
+void botonDer(){
+	led_green_toggle();
+  	led_red_toggle();
+  	if(valor%4==0){ //Ambos apagados
+  		valor=3;	
+  	}else if(valor%4==1){ //Enciende rojo y apaga verde
+  		valor=2;
+  	}else if(valor%4==2){ //Enciende verde apaga rojo
+  		valor=1;
+  	}else if(valor%4==3){ //Ambos encendidos
+  		valor=0;
+  	}  
 }
 
 void PORTD_Int_Handler(void){ //PORTC/PORTD handler
@@ -117,17 +133,7 @@ void PORTD_Int_Handler(void){ //PORTC/PORTD handler
   		led_red_toggle();
   	}  
   }else if(derb){
-  	led_green_toggle();
-  	led_red_toggle();
-  	if(valor%4==0){ //Ambos apagados
-  		valor=3;	
-  	}else if(valor%4==1){ //Enciende rojo y apaga verde
-  		valor=2;
-  	}else if(valor%4==2){ //Enciende verde apaga rojo
-  		valor=1;
-  	}else if(valor%4==3){ //Ambos encendidos
-  		valor=0;
-  	}  
+  	botonDer();
   }
   
 
@@ -136,6 +142,29 @@ void PORTD_Int_Handler(void){ //PORTC/PORTD handler
   PORTC->PCR[3] |= PORT_PCR_ISF(1);
   PORTC->PCR[12] |= PORT_PCR_ISF(1);
 }
+
+void tpm_ini(){
+	SIM->SCGC6|=SIM_SCGC6_TPM0(1); //Habilitar clock para TPM0
+	SIM->SOPT2|=SIM_SOPT2_TPMSRC(3); //MCGIRCLK
+	TPM0->MOD=98500;
+	TPM0->SC &= ~TPM_SC_PS(0); 
+	TPM0->SC |= TPM_SC_TOIE(1) | TPM_SC_CMOD(1);
+	//31.3.1 PS(0): divide by 1, CMOD(1):PM counter increments on every TPM counter clock: habilitar tpm0, TOIE(1):Timer Overflow Interrupt Enable
+	NVIC_EnableIRQ(TPM0_IRQn);
+}
+
+void FTM0_Int_Handler(void){
+	TPM0->SC|= TPM_SC_TOF_MASK; //Clear interrupt request flag
+	if(valor%4==1){
+		led_red_toggle();
+	}else if(valor%4==2){
+		led_green_toggle();
+	}else if(valor%4==3){
+		led_green_toggle();
+		led_red_toggle();
+	}
+}
+
 int main(void)
 {
   char ch;
@@ -153,10 +182,53 @@ int main(void)
   NVIC_EnableIRQ(PORTC_PORTD_IRQn);
 
   PRINTF("\r\nReinicio!\r\n");
-
+  const char * ch2;
   while (1)
     {
-      ch = GETCHAR();
+      while(strcmp(ch2, ":") != 0){
+      //ch = GETCHAR();
       PUTCHAR(ch);
+      ch2 = (char *)&ch;
+      }
+      //PRINTF("\n\n");
+      
+      if(strcmp(ch2, "led1") == 0){ //Invertir led rojo
+      	led_red_toggle();
+      	if(valor%4==0){
+      		valor = 1;
+      	}else if(valor%4==1){
+      		valor = 0;
+      	}else if(valor%4==2){
+      		valor = 3;
+      	}else if(valor%4==3){
+      		valor = 2;
+      	}
+      }else if(strcmp(ch2, "led2") == 0){ //Invertir led verde
+      	led_green_toggle();
+      	if(valor%4==0){
+      		valor = 2;
+      	}else if(valor%4==1){
+      		valor = 3;
+      	}else if(valor%4==2){
+      		valor = 0;
+      	}else if(valor%4==3){
+      		valor = 1;
+      	}
+      }else if(strcmp(ch2, "off") == 0){ //Apagar todos los leds
+      	if(valor%4==1){
+      		led_red_toggle();
+      	}else if(valor%4==2){
+      		led_green_toggle();
+      	}else if(valor%4==3){
+      		led_red_toggle();
+      		led_green_toggle();
+      	}
+      	valor=0;
+      }else if(strcmp(ch2, "toogle") == 0){ //Lo mismo que el boten derecho
+      	botonDer();
+      }else if(strcmp(ch2, "led1") != 0 && strcmp(ch2, "led2") != 0 && strcmp(ch2, "led1") != 0 && strcmp(ch2, "toogle") != 0){
+      	PRINTF("\r\nComando invalido!\r\n");
+      }
+      
     }
 }
